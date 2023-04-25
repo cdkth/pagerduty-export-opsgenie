@@ -13,4 +13,5 @@ A simple python script to export data from PagerDuty with compatibility to use i
     reports = ['users', 'teams', 'escalation_policies', 'schedules', 'services']
 
 ***Note: Only 'users', 'teams', 'escalation_policies', 'schedules', and 'services' have been tested.***
-***Disclaimer: Script is adjusted to adapt with certain use cases according to our PagerDuty settings. Use at your own risk***
+
+***Disclaimer: Script is adjusted to adapt with certain use cases according to our PagerDuty settings. Use at your own risk.***
