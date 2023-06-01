@@ -6,6 +6,7 @@ import csv
 import json
 import uuid
 import os
+import math
 
 # add your PagerDuty api key below (read-only is all that is needed)
 apiKey = 'YOUR_PAGERDUTY_API_KEY_GOES_HERE'
@@ -277,41 +278,21 @@ def opsgenie_compat_format(apiKey, reportType, data):
                         })
                 # Convert seconds into number of days (counting hours)
                 # Determine rotation schedule: weekly/daily/hourly/error
-                rotationHours = x['schedule_layers'][-1]['rotation_turn_length_seconds'] / 3600
-                """
-                if (rotationHours/24 == 7 or rotationHours/24 == 14 or rotationHours/24 == 15):
+                rotationLengthSecs = x['schedule_layers'][-1]['rotation_turn_length_seconds']
+                if rotationLengthSecs >= 3600:
+                    rotationHours =  rotationLengthSecs / 3600
+                else:
+                    rotationHours =  1 # defaults to 1
+                
+                if (rotationHours/24) % 7 == 0:
                     rotationType = "weekly"
-                elif (rotationHours == 24):
+                    rotationLength = int((rotationHours/24)/7)
+                elif rotationHours % 24 == 0:
                     rotationType = "daily"
-                elif (rotationHours == 1):
+                    rotationLength = int(rotationHours/24)
+                else:
                     rotationType = "hourly"
-                else:
-                    #raise ValueError("Rotation type is not accepted by Opsgenie")
-                    print(x['self'])
-                    continue
-                if (rotationHours/24 == 14 or rotationHours/24 == 15):
-                    rotationLength = 2
-                else:
-                    rotationLength = 1
-                """
-
-                rotationLength = 1
-                if (rotationHours == 1):
-                    rotationType = "hourly"
-                elif (rotationHours == 24):
-                    rotationType = "daily"
-                elif (rotationHours/24 == 7):
-                    rotationType = "weekly"
-                elif (rotationHours/24 == 14):
-                    rotationType = "daily"
-                    rotationLength = 14
-                elif (rotationHours/24 == 15):
-                    rotationType = "daily"
-                    rotationLength = 15
-                else:
-                    print(x['self'])
-                    #continue
-                    raise ValueError("Rotation type is not accepted by Opsgenie")
+                    rotationLength = int(rotationHours)
 
                 startDate = x['schedule_layers'][-1]['rotation_virtual_start']
                 startDate = datetime.datetime.fromisoformat(startDate)
