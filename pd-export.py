@@ -14,6 +14,16 @@ apiKey = 'YOUR_PAGERDUTY_API_KEY_GOES_HERE'
 # this list holds all the reports that will run, remove any that you do not want
 reports = ['users', 'teams', 'escalation_policies', 'schedules', 'services']
 
+# Include or exclude escalations from services that don't have any teams
+# If OpsGenie subscription does not include "Global escalations", error: "Your plan does not support Global escalations"
+# Set it to False, to exclude "Global escalations" for OpsGenie import
+global_escalation_policies = True
+
+# Include or exclude schedules from services that don't have any teams
+# If OpsGenie subscription does not include "Global schedules", error: "Your plan does not support Global schedules"
+# Set it to False, to exclude "Global schedules" for OpsGenie import
+global_schedules = True
+
 # To fix an error at Opsgenie import
 # Error: "There is already one Team with same name"
 # Opsgenie does not allow import of Escalation or Schedule with the same name of a Team
@@ -43,7 +53,6 @@ def build_report(apiKey, reportType):
             offset = offset + 100
 
         more = response.json()['more']
-        #more = False
 
     """details = []
     for x in data:
@@ -185,7 +194,6 @@ def opsgenie_compat_format(apiKey, reportType, data):
                 if (TEAMS and escalationPolicySet['name'] in TEAMS):
                     escalationPolicySet['name'] = escalationPolicySet['name'] + ' EP'
                 escalationPolicySet['description'] = x['description'] or ""
-                # Watch out: escalation policies without teams
                 if x['teams']:
                     escalationPolicySet['ownerTeam'] = {
                         # Hard coding to fetch the first team
@@ -193,6 +201,8 @@ def opsgenie_compat_format(apiKey, reportType, data):
                         # than one team
                         "name": x['teams'][0]['summary'].strip()
                     }
+                elif not global_escalation_policies:
+                    continue # Exclude escalation policies without teams
                 escalationDelay = 0
                 escalationPolicySet['rules'] = []
                 for index, value in enumerate(x['escalation_rules']):
@@ -248,7 +258,6 @@ def opsgenie_compat_format(apiKey, reportType, data):
                 scheduleSet['description'] = x['description'] or ""
                 scheduleSet['timezone'] = x['time_zone']
                 scheduleSet['enabled'] = True
-                # Watch out: schedules without teams
                 if x['teams']:
                     scheduleSet['ownerTeam'] = {
                         # Hard coding to fetch the first team
@@ -256,6 +265,8 @@ def opsgenie_compat_format(apiKey, reportType, data):
                         # than one team
                         "name": x['teams'][0]['summary'].strip()
                     }
+                elif not global_schedules:
+                    continue # Exclude schedules without teams
                 scheduleSet['rotations'] = []
                 scheduleSetParticipants = []
                 # Make sure to select "Layer 1", probably at the end
@@ -283,7 +294,62 @@ def opsgenie_compat_format(apiKey, reportType, data):
                     rotationHours =  rotationLengthSecs / 3600
                 else:
                     rotationHours =  1 # defaults to 1
-                
+                """
+                if (rotationHours/24 == 7 or rotationHours/24 == 14 or rotationHours/24 == 15):
+                    rotationType = "weekly"
+                elif (rotationHours == 24):
+                    rotationType = "daily"
+                elif (rotationHours == 1):
+                    rotationType = "hourly"
+                else:
+                    #raise ValueError("Rotation type is not accepted by Opsgenie")
+                    print(x['self'])
+                    continue
+                if (rotationHours/24 == 14 or rotationHours/24 == 15):
+                    rotationLength = 2
+                else:
+                    rotationLength = 1
+                """
+                """
+                rotationLength = 1
+                if (rotationHours == 1):
+                    rotationType = "hourly"
+                elif (rotationHours == 24):
+                    rotationType = "daily"
+                elif (rotationHours/24 == 7):
+                    rotationType = "weekly"
+                elif (rotationHours/24 == 14):
+                    rotationType = "daily"
+                    rotationLength = 14
+                elif (rotationHours/24 == 15):
+                    rotationType = "daily"
+                    rotationLength = 15
+                else:
+                    print(x['self'])
+                    #continue
+                    raise ValueError("Rotation type is not accepted by Opsgenie")
+                """
+                """
+                rotationLength = 1
+                if (rotationHours <= 1):
+                    rotationType = "hourly"
+                elif (rotationHours <= 23):
+                    rotationType = "hourly"
+                    rotationLength = int(math.ceil(rotationHours))
+                elif (23 < rotationHours <= 24):
+                    rotationType = "daily"
+                elif ((rotationHours/24) <= 6):
+                    rotationType = "daily"
+                    rotationLength = int(math.ceil(rotationHours/24))
+                elif (6 < (rotationHours/24) <= 7):
+                    rotationType = "weekly"
+                elif (rotationHours/24) % 7 == 0:
+                    rotationType = "weekly"
+                    rotationLength = int(math.ceil((rotationHours/24)/7))
+                else:
+                    rotationType = "daily"
+                    rotationLength = int(math.ceil(rotationHours/24))
+                """
                 if (rotationHours/24) % 7 == 0:
                     rotationType = "weekly"
                     rotationLength = int((rotationHours/24)/7)
